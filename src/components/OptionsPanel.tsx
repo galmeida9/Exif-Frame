@@ -43,7 +43,11 @@ export default function OptionsPanel() {
   const reset = () => {
     const next = { ...themeOptions };
     delete next[selectedThemeName];
-    set({ themeOptions: next });
+    // Also clear any per-element drag offsets / hidden flags for this theme so
+    // dragged items snap back to their default positions.
+    const nextOffsets = { ...themeElementOffsets };
+    delete nextOffsets[selectedThemeName];
+    set({ themeOptions: next, themeElementOffsets: nextOffsets });
   };
 
   const resetAll = () => {
@@ -71,7 +75,7 @@ export default function OptionsPanel() {
           <button
             className="reset"
             onClick={reset}
-            title="Reset all options for this theme back to its defaults"
+            title="Reset all options AND element positions for this theme back to defaults"
           >
             Reset theme
           </button>

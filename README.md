@@ -40,13 +40,9 @@ a small native installer, native file dialogs and drag-drop, no Electron bloat.
 
 ## Screenshots
 
-<!-- TODO: add screenshots -->
-<!--
-![Main window](docs/screenshots/main.png)
-![STRAP theme with maker logo](docs/screenshots/strap.png)
-![Draggable layout with snap guides](docs/screenshots/layout.png)
-![Pill template editor](docs/screenshots/template-editor.png)
--->
+## Screenshots
+
+![EXIF Frame for Windows — main window with the STRAP theme, maker logo and pill-based template editor](docs/screenshots/main.png)
 
 ## Quick start
 
