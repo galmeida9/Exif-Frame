@@ -42,7 +42,7 @@
       "icons/icon.ico"
     ],
     "category": "Photography",
-    "copyright": "© 2026",
+    "copyright": "© 2026 — GPL v3. Based on jeonghyeon-net/exif-frame.",
     "shortDescription": "Add customizable EXIF-metadata frames to your photos",
     "longDescription": "EXIF Frame for Windows lets you wrap your photos in beautifully customizable frames that display camera, lens, ISO, aperture, shutter and other EXIF metadata. Inspired by jeonghyeon-net/exif-frame, rebuilt for the desktop.",
     "windows": {
@@ -51,7 +51,7 @@
       },
       "nsis": {
         "installerIcon": "icons/icon.ico",
-        "installMode": "perMachine"
+        "installMode": "both"
       }
     }
   }
