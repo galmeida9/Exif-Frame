@@ -1,0 +1,58 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0.0",
+  "productName": "EXIF Frame",
+  "version": "0.1.0",
+  "identifier": "com.exifframe.windows",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "EXIF Frame",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 1100,
+        "minHeight": 700,
+        "resizable": true,
+        "center": true,
+        "decorations": true,
+        "dragDropEnabled": true
+      }
+    ],
+    "security": {
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi", "nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "Photography",
+    "copyright": "© 2026",
+    "shortDescription": "Add customizable EXIF-metadata frames to your photos",
+    "longDescription": "EXIF Frame for Windows lets you wrap your photos in beautifully customizable frames that display camera, lens, ISO, aperture, shutter and other EXIF metadata. Inspired by jeonghyeon-net/exif-frame, rebuilt for the desktop.",
+    "windows": {
+      "wix": {
+        "language": "en-US"
+      },
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "installMode": "perMachine"
+      }
+    }
+  }
+}
