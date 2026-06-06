@@ -125,15 +125,6 @@ src-tauri/
   icons/                     app icons
 ```
 
-## Replacing the app icon
-
-Replace `src-tauri\icons\icon.png` with your own 512×512 (or larger) source PNG,
-then regenerate the icon set:
-
-```powershell
-npx @tauri-apps/cli icon "src-tauri\icons\icon.png"
-```
-
 ## Custom display fonts
 
 The original mobile app ships with proprietary display fonts (Digital-7, Poxel,
