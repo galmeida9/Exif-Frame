@@ -6,6 +6,7 @@ import { useStore } from '../store';
 import { findTheme } from '../themes';
 import render from '../core/drawing/render';
 import { canvasToBlob, type ImageMimeType } from '../core/drawing/convert';
+import { transplantExif } from '../core/exif/transplantExif';
 import type { ThemeOptionInput, AcceptInputType } from '../core/drawing/theme';
 
 type Props = {
@@ -53,14 +54,20 @@ export default function ExportDialog({ photos, selectedIndex, onClose, onStatus 
   const themeDesc = findTheme(store.selectedThemeName);
   const ext = extFor(store.format);
 
-  const renderPhoto = async (photo: Photo): Promise<Blob> => {
+  const renderPhoto = async (photo: Photo): Promise<Uint8Array> => {
     const input = buildOptionsInput(
       themeDesc.name,
       themeDesc.options as { id: string; default: AcceptInputType }[],
       store.getThemeOption
     );
     const canvas = await render(themeDesc.func, photo, input, store);
-    return canvasToBlob(canvas, { type: store.format, quality: store.quality });
+    const blob = await canvasToBlob(canvas, { type: store.format, quality: store.quality });
+    let bytes = await blobToBytes(blob);
+    // Preserve the original capture date / camera EXIF when requested.
+    if (store.maintainExif) {
+      bytes = await transplantExif(photo.file, bytes, store.format);
+    }
+    return bytes;
   };
 
   const exportOne = async () => {
@@ -77,8 +84,8 @@ export default function ExportDialog({ photos, selectedIndex, onClose, onStatus 
     setProgress({ done: 0, total: 1 });
     onStatus({ kind: 'busy', text: `Exporting ${photo.file.name}…` });
     try {
-      const blob = await renderPhoto(photo);
-      await writeFile(dest, await blobToBytes(blob));
+      const bytes = await renderPhoto(photo);
+      await writeFile(dest, bytes);
       setProgress({ done: 1, total: 1 });
       onStatus({ kind: 'idle', text: `Exported ${dest}` });
       onClose();
@@ -104,8 +111,8 @@ export default function ExportDialog({ photos, selectedIndex, onClose, onStatus 
         const photo = photos[i];
         const outPath = `${folder}\\${stripExt(photo.file.name)}.framed.${ext}`;
         try {
-          const blob = await renderPhoto(photo);
-          await writeFile(outPath, await blobToBytes(blob));
+          const bytes = await renderPhoto(photo);
+          await writeFile(outPath, bytes);
         } catch (err) {
           console.error('Export failed for', photo.file.name, err);
           failures++;
