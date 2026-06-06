@@ -13,7 +13,7 @@ const CUSTOM_ONE_LINE_OPTIONS: ThemeOption[] = [
   { id: 'PADDING_BOTTOM', type: 'number', default: 250, description: 'px' },
   { id: 'PADDING_LEFT', type: 'number', default: 100, description: 'px' },
   { id: 'PADDING_RIGHT', type: 'number', default: 100, description: 'px' },
-  { id: 'TEXT', type: 'string', default: 'Your Text', description: 'ex. Hello, World!' },
+  { id: 'TEXT', type: 'string', default: 'Your Text', description: 'ex. Hello, World!', elementId: 'text' },
   { id: 'TEXT_ALPHA', type: 'range-slider', default: 1, min: 0, max: 1, step: 0.01, description: '0 - 1' },
   { id: 'TEXT_COLOR', type: 'color', default: '#ffffff', description: '#ffffff is white, #000000 is black' },
   { id: 'TEXT_ALIGN', type: 'select', options: ['center', 'right', 'left'], default: 'center', description: 'left, center or right' },

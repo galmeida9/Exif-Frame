@@ -15,10 +15,10 @@ const STRAP_OPTIONS: ThemeOption[] = [
   { id: 'PADDING_BOTTOM', type: 'number', default: 300, description: 'px (≥300 recommended for text strip)' },
   { id: 'PADDING_LEFT', type: 'number', default: 0, description: 'px' },
   { id: 'PADDING_RIGHT', type: 'number', default: 0, description: 'px' },
-  { id: 'TEMPLATE1', type: 'string', default: '{ISO}{MM}{F}{SEC}' },
-  { id: 'TEMPLATE2', type: 'string', default: '{MAKER}{BODY}' },
-  { id: 'TEMPLATE3', type: 'string', default: '{TAKEN_AT}' },
-  { id: 'TEMPLATE4', type: 'string', default: '{LENS}' },
+  { id: 'TEMPLATE1', type: 'string', default: '{ISO}{MM}{F}{SEC}', elementId: 'exif' },
+  { id: 'TEMPLATE2', type: 'string', default: '{MAKER}{BODY}', elementId: 'camera' },
+  { id: 'TEMPLATE3', type: 'string', default: '{TAKEN_AT}', elementId: 'subLeft' },
+  { id: 'TEMPLATE4', type: 'string', default: '{LENS}', elementId: 'lens' },
 ];
 
 const STRAP_FUNC: ThemeFunc = (photo: Photo, input: ThemeOptionInput, store: Store, registry?: ElementRegistry) => {

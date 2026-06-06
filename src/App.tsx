@@ -180,6 +180,20 @@ export default function App() {
         setSettingsOpen(true);
         return;
       }
+
+      // Undo / redo per-theme edits (work even while focused in an input).
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) useStore.getState().redo();
+        else useStore.getState().undo();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        useStore.getState().redo();
+        return;
+      }
+
       if (isEditing) return;
 
       if (e.key === 'Delete' && selectedIndex !== null) {

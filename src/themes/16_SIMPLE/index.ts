@@ -7,7 +7,7 @@ import type { Store } from '../../store';
 import Font from '../../fonts';
 
 const SIMPLE_OPTIONS: ThemeOption[] = [
-  { id: 'LABEL', type: 'string', default: '@username', description: 'ex. @username' },
+  { id: 'LABEL', type: 'string', default: '@username', description: 'ex. @username', elementId: 'label' },
   { id: 'FONT_FAMILY', type: 'select', options: ['Barlow', ...Object.values(Font)], default: 'Barlow', description: 'ex. Barlow, Arial' },
   { id: 'PADDING_INSIDE', type: 'boolean', default: false, description: 'enable to use inside padding' },
   { id: 'PADDING_TOP', type: 'number', default: 100, description: 'px' },

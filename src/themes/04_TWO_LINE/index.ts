@@ -20,10 +20,10 @@ const TWO_LINE_OPTIONS: ThemeOption[] = [
   { id: 'FONT_WEIGHT', type: 'range-slider', min: 100, max: 900, step: 100, default: 300, description: '100 - 900' },
   { id: 'FONT_SIZE', type: 'number', default: 70, description: 'px' },
   { id: 'FONT_FAMILY', type: 'select', options: ['Barlow', ...Object.values(Font)], default: 'Barlow', description: 'ex. Barlow, Arial, sans-serif' },
-  { id: 'TOP_LABEL', type: 'string', default: '', description: 'ex. @username' },
+  { id: 'TOP_LABEL', type: 'string', default: '', description: 'ex. @username', elementId: 'topLabel' },
   { id: 'DIVIDER', type: 'string', default: '∙', description: 'ex. |' },
-  { id: 'TEMPLATE1', type: 'string', default: '{MAKER}{BODY}{LENS}' },
-  { id: 'TEMPLATE2', type: 'string', default: '{ISO}{MM}{F}{SEC}' },
+  { id: 'TEMPLATE1', type: 'string', default: '{MAKER}{BODY}{LENS}', elementId: 'line1' },
+  { id: 'TEMPLATE2', type: 'string', default: '{ISO}{MM}{F}{SEC}', elementId: 'line2' },
 ];
 
 function applyTemplate(template: string, photo: Photo, store: Store, divider: string): string {

@@ -7,6 +7,7 @@ import type { ThemeOptionInput, AcceptInputType } from '../core/drawing/theme';
 import { onAnyMakerLogoLoad } from '../themes/_shared/makerLogos';
 import { ElementRegistry, type CapturedElement } from '../core/drawing/elements';
 import { getLayout } from '../core/drawing/sandbox';
+import { subscribeHoveredElement, getHoveredElement } from './elementHover';
 
 type Props = {
   photo: Photo | null;
@@ -81,6 +82,8 @@ export default function PreviewCanvas({ photo, onFilesDropped, onOpen }: Props) 
   const [hoverId, setHoverId] = useState<string | null>(null);
   const hoverIdRef = useRef<string | null>(null);
   hoverIdRef.current = hoverId;
+  // Element highlighted from outside (Options-panel field hover).
+  const externalHoverRef = useRef<string | null>(null);
   // Guide lines to draw as an overlay while dragging (normalized coords).
   const guidesRef = useRef<{ vx: number[]; hy: number[] }>({ vx: [], hy: [] });
   const renderSeq = useRef(0);
@@ -174,8 +177,10 @@ export default function PreviewCanvas({ photo, onFilesDropped, onOpen }: Props) 
     const sx = devW / normW;
     const sy = devH / normH;
 
-    // Hover / drag highlight.
-    const activeId = dragRef.current?.id ?? hoverIdRef.current;
+    // Hover / drag highlight. Either the canvas pointer hover, an active drag,
+    // or an external hover coming from the Options panel (hovering a field that
+    // maps to this element).
+    const activeId = dragRef.current?.id ?? hoverIdRef.current ?? externalHoverRef.current;
     if (activeId) {
       const el = elementsRef.current.find((e) => e.id === activeId);
       if (el && !el.hidden) {
@@ -235,6 +240,15 @@ export default function PreviewCanvas({ photo, onFilesDropped, onOpen }: Props) 
   useEffect(() => {
     repaintVisible();
   }, [zoom, repaintVisible]);
+
+  // Highlight an element when its Options-panel field is hovered.
+  useEffect(() => {
+    externalHoverRef.current = getHoveredElement();
+    return subscribeHoveredElement((id) => {
+      externalHoverRef.current = id;
+      repaintVisible();
+    });
+  }, [repaintVisible]);
 
   const renderPreview = useCallback(async () => {
     if (!photo) {
@@ -537,6 +551,7 @@ export default function PreviewCanvas({ photo, onFilesDropped, onOpen }: Props) 
       } catch {
         /* ignore */
       }
+      hoverIdRef.current = hit.id;
       setHoverId(hit.id);
     },
     [clientToNorm, hitTest, store, themeDesc.name]
@@ -551,6 +566,10 @@ export default function PreviewCanvas({ photo, onFilesDropped, onOpen }: Props) 
         const hit = pt ? hitTest(pt.nx, pt.ny) : null;
         const id = hit?.id ?? null;
         if (id !== hoverIdRef.current) {
+          // Update the ref synchronously so the immediate repaint below draws
+          // the highlight for the element we are NOW over (setHoverId only
+          // updates the ref on the next render, which would lag by one event).
+          hoverIdRef.current = id;
           setHoverId(id);
           repaintVisible();
         }
@@ -714,6 +733,7 @@ export default function PreviewCanvas({ photo, onFilesDropped, onOpen }: Props) 
           onPointerCancel={endCanvasDrag}
           onPointerLeave={() => {
             if (!dragRef.current && hoverIdRef.current) {
+              hoverIdRef.current = null;
               setHoverId(null);
               repaintVisible();
             }

@@ -3,6 +3,7 @@ import { useStore } from '../store';
 import { findTheme } from '../themes';
 import type { ThemeOption } from '../core/drawing/theme';
 import TemplatePillEditor from './TemplatePillEditor';
+import { setHoveredElement } from './elementHover';
 
 /** Template fields use a curly-brace token string and get the pill editor UI. */
 function isTemplateField(opt: ThemeOption): boolean {
@@ -20,10 +21,16 @@ export default function OptionsPanel() {
     themeOptions,
     themeElementOffsets,
     setThemeOption,
-    set,
     getThemeOption,
     resetThemeLayout,
     toggleElementHidden,
+    resetThemeField,
+    resetThemeAll,
+    resetAllThemes,
+    undo,
+    redo,
+    history,
+    future,
   } = store;
 
   const themeDesc = findTheme(selectedThemeName);
@@ -31,6 +38,8 @@ export default function OptionsPanel() {
     (name) => Object.keys(themeOptions[name] ?? {}).length > 0
   ).length;
   const [confirmResetAll, setConfirmResetAll] = useState(false);
+  const canUndo = history.length > 0;
+  const canRedo = future.length > 0;
 
   // Layout (per-element drag) state for the current theme.
   const layoutMap = themeElementOffsets[selectedThemeName] ?? {};
@@ -41,30 +50,16 @@ export default function OptionsPanel() {
   const hiddenIds = layoutIds.filter((id) => layoutMap[id].hidden);
 
   const reset = () => {
-    const next = { ...themeOptions };
-    delete next[selectedThemeName];
-    // Also clear any per-element drag offsets / hidden flags for this theme so
-    // dragged items snap back to their default positions.
-    const nextOffsets = { ...themeElementOffsets };
-    delete nextOffsets[selectedThemeName];
-    set({ themeOptions: next, themeElementOffsets: nextOffsets });
+    resetThemeAll(selectedThemeName);
   };
 
   const resetAll = () => {
-    set({ themeOptions: {}, themeElementOffsets: {} });
+    resetAllThemes();
     setConfirmResetAll(false);
   };
 
   const resetField = (id: string) => {
-    const themeMap = { ...(themeOptions[selectedThemeName] ?? {}) };
-    delete themeMap[id];
-    const next = { ...themeOptions };
-    if (Object.keys(themeMap).length === 0) {
-      delete next[selectedThemeName];
-    } else {
-      next[selectedThemeName] = themeMap;
-    }
-    set({ themeOptions: next });
+    resetThemeField(selectedThemeName, id);
   };
 
   return (
@@ -72,6 +67,24 @@ export default function OptionsPanel() {
       <div className="header">
         <span>Options</span>
         <div className="header-actions">
+          <button
+            className="icon-btn"
+            onClick={undo}
+            disabled={!canUndo}
+            title="Undo (Ctrl+Z)"
+            aria-label="Undo"
+          >
+            ↶
+          </button>
+          <button
+            className="icon-btn"
+            onClick={redo}
+            disabled={!canRedo}
+            title="Redo (Ctrl+Y)"
+            aria-label="Redo"
+          >
+            ↷
+          </button>
           <button
             className="reset"
             onClick={reset}
@@ -214,8 +227,13 @@ function OptionField({
   onChange: (v: string | number | boolean) => void;
   onResetField: () => void;
 }) {
+  const elementId = 'elementId' in opt ? (opt.elementId as string | undefined) : undefined;
   return (
-    <div className="option-field">
+    <div
+      className="option-field"
+      onMouseEnter={elementId ? () => setHoveredElement(elementId) : undefined}
+      onMouseLeave={elementId ? () => setHoveredElement(null) : undefined}
+    >
       {opt.type !== 'boolean' && (
         <label className="option-label">
           <span>{opt.id}</span>

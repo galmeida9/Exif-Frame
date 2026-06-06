@@ -20,9 +20,9 @@ const ONE_LINE_OPTIONS: ThemeOption[] = [
   { id: 'FONT_WEIGHT', type: 'range-slider', min: 100, max: 900, step: 100, default: 300, description: '100 - 900' },
   { id: 'FONT_SIZE', type: 'number', default: 70, description: 'px' },
   { id: 'FONT_FAMILY', type: 'select', options: ['Barlow', ...Object.values(Font)], default: 'Barlow', description: 'ex. Barlow, Arial, sans-serif' },
-  { id: 'TOP_LABEL', type: 'string', default: '', description: 'ex. @username' },
+  { id: 'TOP_LABEL', type: 'string', default: '', description: 'ex. @username', elementId: 'topLabel' },
   { id: 'DIVIDER', type: 'string', default: '∙', description: 'ex. |' },
-  { id: 'TEMPLATE', type: 'string', default: '{MAKER}{BODY}{LENS}{ISO}{MM}{F}{SEC}' },
+  { id: 'TEMPLATE', type: 'string', default: '{MAKER}{BODY}{LENS}{ISO}{MM}{F}{SEC}', elementId: 'text' },
 ];
 
 const ONE_LINE_FUNC: ThemeFunc = (photo: Photo, input: ThemeOptionInput, store: Store, registry?: ElementRegistry) => {

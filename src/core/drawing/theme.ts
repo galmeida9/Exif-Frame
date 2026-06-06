@@ -22,8 +22,8 @@ export type AcceptInputType = string | number | boolean;
 
 /** UI metadata describing one configurable knob of a theme. */
 export type ThemeOption =
-  | { id: string; type: 'string'; default: string; description?: string }
-  | { id: string; type: 'number'; default: number; description?: string }
+  | { id: string; type: 'string'; default: string; description?: string; elementId?: string }
+  | { id: string; type: 'number'; default: number; description?: string; elementId?: string }
   | { id: string; type: 'boolean'; default: boolean; description?: string }
   | { id: string; type: 'color'; default: string; description?: string }
   | { id: string; type: 'select'; options: string[]; default: string; description?: string }

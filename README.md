@@ -22,6 +22,11 @@ a small native installer, native file dialogs and drag-drop, no Electron bloat.
 - **Draggable layout** — drag any text line or logo directly on the preview to
   reposition it, with pink **snap guides** for alignment. Dividers can be dragged
   off to remove and restored from the Options panel.
+- **Undo / redo** — every per-theme edit (element moves, padding, templates,
+  colors, sliders, …) is undoable via the `↶` / `↷` buttons or `Ctrl+Z` / `Ctrl+Y`.
+- **Field ↔ element highlighting** — hovering a template/text input in the Options
+  panel highlights the matching element in the preview, so you can see what each
+  input controls.
 - **Pill-based template editor** — compose info lines from draggable field pills
   (Maker, Body, Lens, ISO, Focal length, Aperture, Shutter, Date) instead of
   typing `{TOKEN}` strings.
@@ -93,6 +98,8 @@ re-build.
 | **Ctrl + O**   | Open photos                      |
 | **Ctrl + S**   | Export                           |
 | **Ctrl + ,**   | Settings                         |
+| **Ctrl + Z**   | Undo theme edit                  |
+| **Ctrl + Y** / **Ctrl + Shift + Z** | Redo theme edit     |
 | **Ctrl + +/−** | Zoom preview in / out            |
 | **Ctrl + 0**   | Reset preview zoom (fit)         |
 | **Ctrl + scroll** | Zoom preview                  |

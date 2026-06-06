@@ -7,7 +7,7 @@ import type { Store } from '../../store';
 import Font from '../../fonts';
 
 const FILM_OPTIONS: ThemeOption[] = [
-  { id: 'ARTIST', type: 'string', default: '', description: 'your name' },
+  { id: 'ARTIST', type: 'string', default: '', description: 'your name', elementId: 'artist' },
   { id: 'FONT_FAMILY', type: 'select', options: ['Barlow', ...Object.values(Font)], default: 'Barlow', description: 'ex. Barlow, Arial, sans-serif' },
   { id: 'TEXT_COLOR', type: 'color', default: '#FFA500', description: 'default is orange hex code' },
   { id: 'TEXT_ALPHA', type: 'range-slider', default: 1, min: 0, max: 1, step: 0.01, description: '0 - 1' },

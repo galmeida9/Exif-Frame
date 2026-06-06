@@ -10,6 +10,17 @@ export type ThemeOptionValue = string | number | boolean;
 /** Per-element drag offset + visibility for the draggable-layout feature. */
 export type ElementOffset = { dx: number; dy: number; hidden?: boolean };
 
+/**
+ * A point-in-time snapshot of the per-theme editable state used by the
+ * undo/redo history. Captures everything the user edits while customizing a
+ * frame: theme options (padding, template, colors, sliders, …) and element
+ * layout (drag offsets, hidden flags, dividers).
+ */
+export type HistorySnapshot = {
+  themeOptions: Record<string, Record<string, ThemeOptionValue>>;
+  themeElementOffsets: Record<string, Record<string, ElementOffset>>;
+};
+
 export type Format = 'image/jpeg' | 'image/webp' | 'image/png';
 export type ThumbnailSize = 'small' | 'medium' | 'large';
 
@@ -71,6 +82,10 @@ export type State = {
   // Desktop UX
   thumbnailSize: ThumbnailSize;
   zoomToFit: boolean;
+
+  // Undo/redo history for per-theme edits (NOT persisted to disk).
+  history: HistorySnapshot[];
+  future: HistorySnapshot[];
 };
 
 export type StoreActions = {
@@ -82,6 +97,15 @@ export type StoreActions = {
   resetElementOffset: (themeName: string, elementId: string) => void;
   toggleElementHidden: (themeName: string, elementId: string, hidden: boolean) => void;
   resetThemeLayout: (themeName: string) => void;
+  /** Reset a single theme option back to its default (with history). */
+  resetThemeField: (themeName: string, key: string) => void;
+  /** Reset ALL options AND layout for one theme (with history). */
+  resetThemeAll: (themeName: string) => void;
+  /** Reset options AND layout for EVERY theme (with history). */
+  resetAllThemes: () => void;
+  /** Undo / redo per-theme edits. */
+  undo: () => void;
+  redo: () => void;
   upsertOverridableMetadata: (index: number, patch: OverridableMetadata) => void;
   removeOverridableMetadata: (index: number) => void;
   clearOverridableMetadata: () => void;
@@ -133,6 +157,9 @@ const DEFAULTS: State = {
 
   thumbnailSize: 'medium',
   zoomToFit: true,
+
+  history: [],
+  future: [],
 };
 
 // ----- Persistence (Tauri store plugin) -----
@@ -164,6 +191,9 @@ function schedulePersist() {
     const snap = useStore.getState();
     const persistable: PersistedState = { ...snap, __version: CURRENT_SCHEMA_VERSION };
     delete (persistable as Partial<State>).hydrated;
+    // Undo/redo history is session-only — never write it to disk.
+    delete (persistable as Partial<State>).history;
+    delete (persistable as Partial<State>).future;
     try {
       await s.set(STATE_KEY, persistable);
       await s.save();
@@ -231,9 +261,46 @@ function migrate(persisted: PersistedState): PersistedState {
   return next;
 }
 
+// ----- Undo/redo history -----
+
+const MAX_HISTORY = 100;
+// Coalesce rapid successive edits to the SAME logical control (e.g. dragging a
+// slider, typing in a number field) into a single undo step.
+const COALESCE_MS = 500;
+let lastHistoryKey: string | null = null;
+let lastHistoryTime = 0;
+
+function cloneSnapshot(s: { themeOptions: State['themeOptions']; themeElementOffsets: State['themeElementOffsets'] }): HistorySnapshot {
+  return {
+    themeOptions: structuredClone(s.themeOptions),
+    themeElementOffsets: structuredClone(s.themeElementOffsets),
+  };
+}
+
 // ----- Zustand store -----
 
-export const useStore = create<Store>((set, get) => ({
+export const useStore = create<Store>((set, get) => {
+  /**
+   * Capture the current per-theme editable state onto the undo stack BEFORE a
+   * mutation is applied. `coalesceKey` lets consecutive edits to the same
+   * control within COALESCE_MS collapse into one undo step (pass null to always
+   * create a discrete step).
+   */
+  const pushHistory = (coalesceKey: string | null) => {
+    const now = Date.now();
+    if (coalesceKey !== null && coalesceKey === lastHistoryKey && now - lastHistoryTime < COALESCE_MS) {
+      lastHistoryTime = now;
+      return; // merge into the existing (earlier) undo step
+    }
+    lastHistoryKey = coalesceKey;
+    lastHistoryTime = now;
+    const snap = cloneSnapshot(get());
+    let history = [...get().history, snap];
+    if (history.length > MAX_HISTORY) history = history.slice(history.length - MAX_HISTORY);
+    set({ history, future: [] });
+  };
+
+  return ({
   ...DEFAULTS,
 
   set: (patch) => {
@@ -242,6 +309,7 @@ export const useStore = create<Store>((set, get) => ({
   },
 
   setThemeOption: (themeName, key, value) => {
+    pushHistory(`opt:${themeName}:${key}`);
     const themeOptions = { ...get().themeOptions };
     const themeMap = { ...(themeOptions[themeName] ?? {}) };
     themeMap[key] = value;
@@ -260,6 +328,7 @@ export const useStore = create<Store>((set, get) => ({
   },
 
   setElementOffset: (themeName, elementId, offset) => {
+    pushHistory(null);
     const all = { ...get().themeElementOffsets };
     const themeMap = { ...(all[themeName] ?? {}) };
     themeMap[elementId] = offset;
@@ -269,6 +338,7 @@ export const useStore = create<Store>((set, get) => ({
   },
 
   resetElementOffset: (themeName, elementId) => {
+    pushHistory(null);
     const all = { ...get().themeElementOffsets };
     const themeMap = { ...(all[themeName] ?? {}) };
     delete themeMap[elementId];
@@ -282,6 +352,7 @@ export const useStore = create<Store>((set, get) => ({
   },
 
   toggleElementHidden: (themeName, elementId, hidden) => {
+    pushHistory(null);
     const all = { ...get().themeElementOffsets };
     const themeMap = { ...(all[themeName] ?? {}) };
     const cur = themeMap[elementId] ?? { dx: 0, dy: 0 };
@@ -292,9 +363,70 @@ export const useStore = create<Store>((set, get) => ({
   },
 
   resetThemeLayout: (themeName) => {
+    pushHistory(null);
     const all = { ...get().themeElementOffsets };
     delete all[themeName];
     set({ themeElementOffsets: all });
+    schedulePersist();
+  },
+
+  resetThemeField: (themeName, key) => {
+    pushHistory(null);
+    const themeOptions = { ...get().themeOptions };
+    const themeMap = { ...(themeOptions[themeName] ?? {}) };
+    delete themeMap[key];
+    if (Object.keys(themeMap).length === 0) {
+      delete themeOptions[themeName];
+    } else {
+      themeOptions[themeName] = themeMap;
+    }
+    set({ themeOptions });
+    schedulePersist();
+  },
+
+  resetThemeAll: (themeName) => {
+    pushHistory(null);
+    const themeOptions = { ...get().themeOptions };
+    delete themeOptions[themeName];
+    const themeElementOffsets = { ...get().themeElementOffsets };
+    delete themeElementOffsets[themeName];
+    set({ themeOptions, themeElementOffsets });
+    schedulePersist();
+  },
+
+  resetAllThemes: () => {
+    pushHistory(null);
+    set({ themeOptions: {}, themeElementOffsets: {} });
+    schedulePersist();
+  },
+
+  undo: () => {
+    const history = get().history;
+    if (history.length === 0) return;
+    const prev = history[history.length - 1];
+    const current = cloneSnapshot(get());
+    lastHistoryKey = null; // break coalescing across undo
+    set({
+      themeOptions: structuredClone(prev.themeOptions),
+      themeElementOffsets: structuredClone(prev.themeElementOffsets),
+      history: history.slice(0, -1),
+      future: [...get().future, current],
+    });
+    schedulePersist();
+  },
+
+  redo: () => {
+    const future = get().future;
+    if (future.length === 0) return;
+    const next = future[future.length - 1];
+    const current = cloneSnapshot(get());
+    lastHistoryKey = null;
+    set({
+      themeOptions: structuredClone(next.themeOptions),
+      themeElementOffsets: structuredClone(next.themeElementOffsets),
+      future: future.slice(0, -1),
+      history: [...get().history, current],
+    });
     schedulePersist();
   },
 
@@ -321,7 +453,8 @@ export const useStore = create<Store>((set, get) => ({
     set({ overridableMetadata: [], overrideMetadataIndex: null });
     schedulePersist();
   },
-}));
+  });
+});
 
 export async function hydrateStore(): Promise<void> {
   const s = await getTauriStore();

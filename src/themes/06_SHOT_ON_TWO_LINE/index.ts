@@ -12,7 +12,7 @@ const SHOT_ON_TWO_LINE_OPTIONS: ThemeOption[] = [
   { id: 'PADDING_LEFT', type: 'number', default: 50, description: 'px' },
   { id: 'PADDING_RIGHT', type: 'number', default: 50, description: 'px' },
   { id: 'TEXT_COLOR', type: 'color', default: '#000000', description: '#ffffff is white, #000000 is black' },
-  { id: 'TOP_LABEL', type: 'string', default: '', description: 'ex. @username' },
+  { id: 'TOP_LABEL', type: 'string', default: '', description: 'ex. @username', elementId: 'topLabel' },
 ];
 
 const SHOT_ON_TWO_LINE_FUNC: ThemeFunc = (photo: Photo, input: ThemeOptionInput, store: Store, registry?: ElementRegistry) => {

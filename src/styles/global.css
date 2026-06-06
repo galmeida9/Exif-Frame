@@ -532,6 +532,28 @@ label {
   padding: 2px 8px;
 }
 
+.options-panel .header .icon-btn {
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 7px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.options-panel .header .icon-btn:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.options-panel .header .icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .options-panel .header .header-actions {
   margin-left: auto;
   display: flex;
