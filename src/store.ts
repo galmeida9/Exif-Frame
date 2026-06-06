@@ -11,14 +11,69 @@ export type ThemeOptionValue = string | number | boolean;
 export type ElementOffset = { dx: number; dy: number; hidden?: boolean };
 
 /**
+ * Per-element text style override. Any field left undefined falls back to the
+ * value the theme used when drawing that element. Applied universally to every
+ * captured text element so any theme's lines become font/color/align editable.
+ */
+export type ElementStyle = {
+  color?: string;
+  fontFamily?: string;
+  fontWeight?: number;
+  fontSize?: number;
+  align?: 'left' | 'center' | 'right';
+};
+
+/**
+ * One extra user-added text line appended to ANY theme. Mirrors the CUSTOM
+ * theme's CustomLine shape (kept structurally compatible).
+ */
+export type ExtraLine = {
+  id: string;
+  label?: string;
+  template: string;
+  fontFamily: string;
+  fontWeight: number;
+  fontSize: number;
+  color: string;
+  align: 'left' | 'center' | 'right';
+};
+
+/**
+ * A user-saved, named custom theme. Its *live* editable data lives in the
+ * normal per-theme maps under the synthetic key `saved:<id>` (so options, drag,
+ * styles, undo and persistence all work on it for free). The `baseline` is an
+ * immutable snapshot of the state at save time, so "Reset theme" can restore a
+ * saved preset to exactly how it was saved.
+ */
+export type SavedTheme = {
+  id: string;
+  name: string;
+  baseline: {
+    options: Record<string, ThemeOptionValue>;
+    offsets: Record<string, ElementOffset>;
+    styles: Record<string, ElementStyle>;
+    extraLines: ExtraLine[];
+  };
+};
+
+/** Theme name of the built-in fully-custom theme. */
+export const CUSTOM_THEME_NAME = '17. CUSTOM';
+/** Synthetic theme-name prefix for saved custom presets. */
+export const SAVED_PREFIX = 'saved:';
+export const savedThemeKey = (id: string) => SAVED_PREFIX + id;
+export const isSavedThemeName = (name: string) => name.startsWith(SAVED_PREFIX);
+
+/**
  * A point-in-time snapshot of the per-theme editable state used by the
  * undo/redo history. Captures everything the user edits while customizing a
- * frame: theme options (padding, template, colors, sliders, …) and element
- * layout (drag offsets, hidden flags, dividers).
+ * frame: theme options (padding, template, colors, sliders, …), element layout
+ * (drag offsets, hidden flags), per-element style overrides and extra lines.
  */
 export type HistorySnapshot = {
   themeOptions: Record<string, Record<string, ThemeOptionValue>>;
   themeElementOffsets: Record<string, Record<string, ElementOffset>>;
+  themeElementStyles: Record<string, Record<string, ElementStyle>>;
+  themeExtraLines: Record<string, ExtraLine[]>;
 };
 
 export type Format = 'image/jpeg' | 'image/webp' | 'image/png';
@@ -36,6 +91,12 @@ export type State = {
   themeOptions: Record<string, Record<string, ThemeOptionValue>>;
   /** Per-theme, per-element drag offsets / visibility (persisted). */
   themeElementOffsets: Record<string, Record<string, ElementOffset>>;
+  /** Per-theme, per-element text style overrides (persisted). */
+  themeElementStyles: Record<string, Record<string, ElementStyle>>;
+  /** Per-theme list of extra user-added lines (persisted). */
+  themeExtraLines: Record<string, ExtraLine[]>;
+  /** Named saved theme presets (persisted). */
+  savedThemes: SavedTheme[];
 
   // Canvas pipeline
   ratio: string;
@@ -96,6 +157,11 @@ export type StoreActions = {
   setElementOffset: (themeName: string, elementId: string, offset: ElementOffset) => void;
   resetElementOffset: (themeName: string, elementId: string) => void;
   toggleElementHidden: (themeName: string, elementId: string, hidden: boolean) => void;
+  getElementStyle: (themeName: string, elementId: string) => ElementStyle;
+  setElementStyle: (themeName: string, elementId: string, patch: ElementStyle) => void;
+  resetElementStyle: (themeName: string, elementId: string) => void;
+  getExtraLines: (themeName: string) => ExtraLine[];
+  setExtraLines: (themeName: string, lines: ExtraLine[]) => void;
   resetThemeLayout: (themeName: string) => void;
   /** Reset a single theme option back to its default (with history). */
   resetThemeField: (themeName: string, key: string) => void;
@@ -103,6 +169,13 @@ export type StoreActions = {
   resetThemeAll: (themeName: string) => void;
   /** Reset options AND layout for EVERY theme (with history). */
   resetAllThemes: () => void;
+  /** Save the current theme's full customization as a named preset. */
+  saveCurrentTheme: (name: string) => void;
+  /** Apply a saved preset (switches theme to render its customization). */
+  applySavedTheme: (id: string) => void;
+  /** Restore a saved custom theme to its saved baseline. */
+  resetSavedTheme: (id: string) => void;
+  deleteSavedTheme: (id: string) => void;
   /** Undo / redo per-theme edits. */
   undo: () => void;
   redo: () => void;
@@ -124,6 +197,9 @@ const DEFAULTS: State = {
   selectedThemeName: '04. TWO LINE',
   themeOptions: {},
   themeElementOffsets: {},
+  themeElementStyles: {},
+  themeExtraLines: {},
+  savedThemes: [],
 
   ratio: 'free',
   notCroppedMode: false,
@@ -208,7 +284,7 @@ function schedulePersist() {
 // would make a previously-saved-as-default user override misleading. When
 // the persisted version is older than CURRENT_SCHEMA_VERSION we apply the
 // migrations between them and then bump.
-const CURRENT_SCHEMA_VERSION = 4;
+const CURRENT_SCHEMA_VERSION = 5;
 
 type PersistedState = Partial<State> & {
   __version?: number;
@@ -257,6 +333,27 @@ function migrate(persisted: PersistedState): PersistedState {
     delete next.focalLength35mmMode;
   }
 
+  // v4 -> v5: SavedTheme gained an immutable `baseline` snapshot used by
+  // "Reset theme". Backfill it for any saved themes from earlier builds using
+  // their current live data so resets work (best effort).
+  if (fromVersion < 5 && Array.isArray(next.savedThemes)) {
+    next.savedThemes = next.savedThemes.map((p) => {
+      const preset = p as SavedTheme;
+      if (preset.baseline) return preset;
+      const key = SAVED_PREFIX + preset.id;
+      return {
+        id: preset.id,
+        name: preset.name,
+        baseline: {
+          options: structuredClone(next.themeOptions?.[key] ?? {}),
+          offsets: structuredClone(next.themeElementOffsets?.[key] ?? {}),
+          styles: structuredClone(next.themeElementStyles?.[key] ?? {}),
+          extraLines: structuredClone(next.themeExtraLines?.[key] ?? []),
+        },
+      };
+    });
+  }
+
   next.__version = CURRENT_SCHEMA_VERSION;
   return next;
 }
@@ -270,10 +367,17 @@ const COALESCE_MS = 500;
 let lastHistoryKey: string | null = null;
 let lastHistoryTime = 0;
 
-function cloneSnapshot(s: { themeOptions: State['themeOptions']; themeElementOffsets: State['themeElementOffsets'] }): HistorySnapshot {
+function cloneSnapshot(s: {
+  themeOptions: State['themeOptions'];
+  themeElementOffsets: State['themeElementOffsets'];
+  themeElementStyles: State['themeElementStyles'];
+  themeExtraLines: State['themeExtraLines'];
+}): HistorySnapshot {
   return {
     themeOptions: structuredClone(s.themeOptions),
     themeElementOffsets: structuredClone(s.themeElementOffsets),
+    themeElementStyles: structuredClone(s.themeElementStyles),
+    themeExtraLines: structuredClone(s.themeExtraLines),
   };
 }
 
@@ -366,7 +470,49 @@ export const useStore = create<Store>((set, get) => {
     pushHistory(null);
     const all = { ...get().themeElementOffsets };
     delete all[themeName];
-    set({ themeElementOffsets: all });
+    const styles = { ...get().themeElementStyles };
+    delete styles[themeName];
+    const extra = { ...get().themeExtraLines };
+    delete extra[themeName];
+    set({ themeElementOffsets: all, themeElementStyles: styles, themeExtraLines: extra });
+    schedulePersist();
+  },
+
+  getElementStyle: (themeName, elementId) => {
+    return get().themeElementStyles[themeName]?.[elementId] ?? {};
+  },
+
+  setElementStyle: (themeName, elementId, patch) => {
+    pushHistory(`style:${themeName}:${elementId}:${Object.keys(patch).join(',')}`);
+    const all = { ...get().themeElementStyles };
+    const themeMap = { ...(all[themeName] ?? {}) };
+    themeMap[elementId] = { ...(themeMap[elementId] ?? {}), ...patch };
+    all[themeName] = themeMap;
+    set({ themeElementStyles: all });
+    schedulePersist();
+  },
+
+  resetElementStyle: (themeName, elementId) => {
+    pushHistory(null);
+    const all = { ...get().themeElementStyles };
+    const themeMap = { ...(all[themeName] ?? {}) };
+    delete themeMap[elementId];
+    if (Object.keys(themeMap).length === 0) delete all[themeName];
+    else all[themeName] = themeMap;
+    set({ themeElementStyles: all });
+    schedulePersist();
+  },
+
+  getExtraLines: (themeName) => {
+    return get().themeExtraLines[themeName] ?? [];
+  },
+
+  setExtraLines: (themeName, lines) => {
+    pushHistory(`extra:${themeName}`);
+    const all = { ...get().themeExtraLines };
+    if (lines.length === 0) delete all[themeName];
+    else all[themeName] = lines;
+    set({ themeExtraLines: all });
     schedulePersist();
   },
 
@@ -390,13 +536,101 @@ export const useStore = create<Store>((set, get) => {
     delete themeOptions[themeName];
     const themeElementOffsets = { ...get().themeElementOffsets };
     delete themeElementOffsets[themeName];
-    set({ themeOptions, themeElementOffsets });
+    const themeElementStyles = { ...get().themeElementStyles };
+    delete themeElementStyles[themeName];
+    const themeExtraLines = { ...get().themeExtraLines };
+    delete themeExtraLines[themeName];
+    set({ themeOptions, themeElementOffsets, themeElementStyles, themeExtraLines });
     schedulePersist();
   },
 
   resetAllThemes: () => {
     pushHistory(null);
-    set({ themeOptions: {}, themeElementOffsets: {} });
+    set({ themeOptions: {}, themeElementOffsets: {}, themeElementStyles: {}, themeExtraLines: {} });
+    schedulePersist();
+  },
+
+  saveCurrentTheme: (name) => {
+    const source = get().selectedThemeName;
+    const id = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const key = savedThemeKey(id);
+
+    // Snapshot the live theme's data into the new saved-theme slot (deep clones
+    // so the saved theme is fully independent of the source going forward).
+    const savedOptions = structuredClone(get().themeOptions[source] ?? {});
+    const savedOffsets = structuredClone(get().themeElementOffsets[source] ?? {});
+    const savedStyles = structuredClone(get().themeElementStyles[source] ?? {});
+    const savedExtra = structuredClone(get().themeExtraLines[source] ?? []);
+
+    const nextOptions = { ...get().themeOptions, [key]: structuredClone(savedOptions) };
+    const nextOffsets = { ...get().themeElementOffsets, [key]: structuredClone(savedOffsets) };
+    const nextStyles = { ...get().themeElementStyles, [key]: structuredClone(savedStyles) };
+    const nextExtra = { ...get().themeExtraLines, [key]: structuredClone(savedExtra) };
+
+    // When saving from the base CUSTOM theme, reset it back to its defaults so
+    // it's a clean slate again and clearly independent from the saved preset.
+    if (source === CUSTOM_THEME_NAME) {
+      delete nextOptions[CUSTOM_THEME_NAME];
+      delete nextOffsets[CUSTOM_THEME_NAME];
+      delete nextStyles[CUSTOM_THEME_NAME];
+      delete nextExtra[CUSTOM_THEME_NAME];
+    }
+
+    set({
+      savedThemes: [
+        ...get().savedThemes,
+        {
+          id,
+          name: name.trim() || 'Custom theme',
+          baseline: { options: savedOptions, offsets: savedOffsets, styles: savedStyles, extraLines: savedExtra },
+        },
+      ],
+      themeOptions: nextOptions,
+      themeElementOffsets: nextOffsets,
+      themeElementStyles: nextStyles,
+      themeExtraLines: nextExtra,
+      selectedThemeName: key,
+    });
+    schedulePersist();
+  },
+
+  applySavedTheme: (id) => {
+    const key = savedThemeKey(id);
+    if (!get().savedThemes.some((p) => p.id === id)) return;
+    set({ selectedThemeName: key });
+    schedulePersist();
+  },
+
+  /** Restore a saved custom theme's live data to its saved baseline. */
+  resetSavedTheme: (id) => {
+    const preset = get().savedThemes.find((p) => p.id === id);
+    if (!preset) return;
+    pushHistory(null);
+    const key = savedThemeKey(id);
+    set({
+      themeOptions: { ...get().themeOptions, [key]: structuredClone(preset.baseline.options) },
+      themeElementOffsets: { ...get().themeElementOffsets, [key]: structuredClone(preset.baseline.offsets) },
+      themeElementStyles: { ...get().themeElementStyles, [key]: structuredClone(preset.baseline.styles) },
+      themeExtraLines: { ...get().themeExtraLines, [key]: structuredClone(preset.baseline.extraLines) },
+    });
+    schedulePersist();
+  },
+
+  deleteSavedTheme: (id) => {
+    const key = savedThemeKey(id);
+    const themeOptions = { ...get().themeOptions };
+    delete themeOptions[key];
+    const themeElementOffsets = { ...get().themeElementOffsets };
+    delete themeElementOffsets[key];
+    const themeElementStyles = { ...get().themeElementStyles };
+    delete themeElementStyles[key];
+    const themeExtraLines = { ...get().themeExtraLines };
+    delete themeExtraLines[key];
+    const savedThemes = get().savedThemes.filter((p) => p.id !== id);
+    // If we deleted the active theme, fall back to the base CUSTOM theme.
+    const selectedThemeName =
+      get().selectedThemeName === key ? CUSTOM_THEME_NAME : get().selectedThemeName;
+    set({ savedThemes, themeOptions, themeElementOffsets, themeElementStyles, themeExtraLines, selectedThemeName });
     schedulePersist();
   },
 
@@ -409,6 +643,8 @@ export const useStore = create<Store>((set, get) => {
     set({
       themeOptions: structuredClone(prev.themeOptions),
       themeElementOffsets: structuredClone(prev.themeElementOffsets),
+      themeElementStyles: structuredClone(prev.themeElementStyles),
+      themeExtraLines: structuredClone(prev.themeExtraLines),
       history: history.slice(0, -1),
       future: [...get().future, current],
     });
@@ -424,6 +660,8 @@ export const useStore = create<Store>((set, get) => {
     set({
       themeOptions: structuredClone(next.themeOptions),
       themeElementOffsets: structuredClone(next.themeElementOffsets),
+      themeElementStyles: structuredClone(next.themeElementStyles),
+      themeExtraLines: structuredClone(next.themeExtraLines),
       future: future.slice(0, -1),
       history: [...get().history, current],
     });

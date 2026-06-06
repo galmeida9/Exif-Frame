@@ -4,10 +4,11 @@ import type { ThemeFunc, ThemeOptionInput } from './theme';
 import type { ElementRegistry } from './elements';
 import resize from './resize';
 import { getLayout } from './sandbox';
+import { applyTemplate } from '../../themes/_shared/applyTemplate';
 
 /**
  * Pipeline runner: invoke the theme function, then apply post-effects
- * (fixed watermark, fixed image width) defined in the global store.
+ * (extra user lines, fixed watermark, fixed image width) defined in the store.
  */
 export default async function render(
   func: ThemeFunc,
@@ -29,6 +30,32 @@ export default async function render(
   }
 
   let canvas = func(photo, options, store, registry);
+
+  // Draw extra user-added lines on top, in normalized space. Each is captured
+  // by the registry (id `extra:<lineId>`) so it is draggable / hoverable, and
+  // is positioned in the lower-center by default (the user then drags it).
+  if (registry) {
+    const extras = store.getExtraLines(registry.themeName);
+    if (extras.length > 0) {
+      const ctx = canvas.getContext('2d')!;
+      const { width: W, height: H } = getLayout(canvas);
+      ctx.textBaseline = 'middle';
+      const gaps = extras.map((l) => l.fontSize * 1.4);
+      const total = gaps.reduce((a, b) => a + b, 0);
+      let cursorY = H / 2 - total / 2;
+      for (let i = 0; i < extras.length; i++) {
+        const line = extras[i];
+        const y = cursorY + gaps[i] / 2;
+        cursorY += gaps[i];
+        const text = applyTemplate(line.template, photo, store, ' ');
+        ctx.font = `normal ${line.fontWeight} ${line.fontSize}px ${line.fontFamily}`;
+        ctx.fillStyle = line.color;
+        ctx.textAlign = line.align;
+        const x = line.align === 'left' ? W * 0.1 : line.align === 'right' ? W * 0.9 : W / 2;
+        registry.text(ctx, `extra:${line.id}`, line.label || `Extra line ${i + 1}`, text, x, y);
+      }
+    }
+  }
 
   if (store.fixWatermark && store.watermark) {
     const ctx = canvas.getContext('2d')!;

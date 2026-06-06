@@ -33,22 +33,50 @@ export interface CapturedElement {
   w: number;
   h: number;
   hidden: boolean;
+  /**
+   * The text style actually used to draw this element (after any style
+   * override), so the UI can show the real current values instead of "default".
+   * Only present for text elements.
+   */
+  resolved?: {
+    color: string;
+    fontFamily: string;
+    fontWeight: number;
+    fontSize: number;
+    align: 'left' | 'center' | 'right';
+  };
 }
 
 export type OffsetGetter = (themeName: string, elementId: string) => ElementOffset;
 
+/** Partial text-style override applied to a captured text element. */
+export type ElementStyleOverride = {
+  color?: string;
+  fontFamily?: string;
+  fontWeight?: number;
+  fontSize?: number;
+  align?: 'left' | 'center' | 'right';
+};
+export type StyleGetter = (themeName: string, elementId: string) => ElementStyleOverride;
+
 const ZERO: ElementOffset = { dx: 0, dy: 0, hidden: false };
+const NO_STYLE: ElementStyleOverride = {};
 
 export class ElementRegistry {
   readonly elements: CapturedElement[] = [];
 
   constructor(
     public readonly themeName: string,
-    private readonly getOffset: OffsetGetter
+    private readonly getOffset: OffsetGetter,
+    private readonly getStyle: StyleGetter = () => NO_STYLE
   ) {}
 
   offset(id: string): ElementOffset {
     return this.getOffset(this.themeName, id) ?? ZERO;
+  }
+
+  style(id: string): ElementStyleOverride {
+    return this.getStyle(this.themeName, id) ?? NO_STYLE;
   }
 
   private push(el: CapturedElement) {
@@ -58,7 +86,8 @@ export class ElementRegistry {
   /**
    * Draw a single line of text through the offset/capture pipeline. The caller
    * must have already configured `ctx.font`, `ctx.fillStyle`, `ctx.textAlign`
-   * and `ctx.textBaseline` exactly as for a normal fillText.
+   * and `ctx.textBaseline` exactly as for a normal fillText. Any per-element
+   * style override (color / font / size / weight / align) is applied on top.
    */
   text(
     ctx: CanvasRenderingContext2D,
@@ -69,6 +98,19 @@ export class ElementRegistry {
     y: number
   ): void {
     const off = this.offset(id);
+    const st = this.style(id);
+
+    // Apply style overrides over the font/color/align the theme set.
+    if (st.color !== undefined) ctx.fillStyle = st.color;
+    if (st.align !== undefined) ctx.textAlign = st.align;
+    if (st.fontFamily !== undefined || st.fontWeight !== undefined || st.fontSize !== undefined) {
+      const base = parseFont(ctx.font);
+      const family = st.fontFamily ?? base.family;
+      const weight = st.fontWeight ?? base.weight;
+      const size = st.fontSize ?? base.size;
+      ctx.font = `${base.style} ${weight} ${size}px ${family}`;
+    }
+
     const px = x + off.dx;
     const py = y + off.dy;
 
@@ -88,6 +130,11 @@ export class ElementRegistry {
       ctx.fillText(textValue, px, py);
     }
 
+    // Resolve the actual style used (after overrides) so the UI can display the
+    // true current values instead of "default".
+    const usedFont = parseFont(ctx.font);
+    const usedColor = typeof ctx.fillStyle === 'string' ? ctx.fillStyle : '#000000';
+
     this.push({
       id,
       label,
@@ -97,6 +144,13 @@ export class ElementRegistry {
       w: Math.max(1, width),
       h: Math.max(1, height),
       hidden: !!off.hidden,
+      resolved: {
+        color: usedColor,
+        fontFamily: usedFont.family,
+        fontWeight: usedFont.weight,
+        fontSize: usedFont.size,
+        align: ctx.textAlign === 'left' || ctx.textAlign === 'right' ? ctx.textAlign : 'center',
+      },
     });
   }
 
@@ -179,6 +233,31 @@ export class ElementRegistry {
 function parseFontSize(font: string): number {
   const m = font.match(/(\d+(?:\.\d+)?)px/);
   return m ? parseFloat(m[1]) : 70;
+}
+
+/**
+ * Tolerant parse of a CSS canvas `font` shorthand into its parts. Handles the
+ * variants used across themes, e.g. `normal 500 70px Barlow`, `700 100px Arial`,
+ * `100px Barlow`, `normal 300 50px "Segoe UI"`.
+ */
+function parseFont(font: string): { style: string; weight: number; size: number; family: string } {
+  const sizeMatch = font.match(/(\d+(?:\.\d+)?)px\s+(.+)$/);
+  const size = sizeMatch ? parseFloat(sizeMatch[1]) : 70;
+  const family = sizeMatch ? sizeMatch[2].trim() : 'Barlow';
+  const before = sizeMatch ? font.slice(0, sizeMatch.index).trim() : font.trim();
+  const tokens = before.split(/\s+/).filter(Boolean);
+  let style = 'normal';
+  let weight = 400;
+  for (const t of tokens) {
+    if (t === 'italic' || t === 'oblique' || t === 'normal') {
+      if (t !== 'normal') style = t;
+    } else if (/^\d+$/.test(t)) {
+      weight = parseInt(t, 10);
+    } else if (t === 'bold') {
+      weight = 700;
+    }
+  }
+  return { style, weight, size, family };
 }
 
 function anchorLeft(px: number, width: number, align: CanvasTextAlign): number {

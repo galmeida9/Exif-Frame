@@ -786,6 +786,272 @@ label {
   color: #fff;
 }
 
+/* ===== Custom theme — lines editor ===== */
+
+.lines-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.line-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  padding: 8px;
+  background: var(--bg-input);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.line-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.line-card-head .line-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.line-title-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 6px);
+  padding: 2px 6px;
+}
+
+.line-title-input:hover {
+  border-color: var(--border);
+}
+
+.line-title-input:focus {
+  border-color: var(--accent);
+  background: var(--bg-panel);
+  outline: none;
+}
+
+.line-card-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.line-mini {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  padding: 0;
+  border-radius: var(--radius-sm, 6px);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.line-mini:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.line-mini.danger:hover:not(:disabled) {
+  background: #d9534f;
+  border-color: #d9534f;
+}
+
+.line-mini:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.line-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.line-ctl {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 0;
+}
+
+.line-ctl select,
+.line-ctl input[type='number'] {
+  width: 100%;
+  min-width: 0;
+}
+
+.line-ctl.color {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.line-ctl.color input[type='color'] {
+  width: 36px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  background: transparent;
+  cursor: pointer;
+}
+
+.add-line-btn {
+  appearance: none;
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm, 6px);
+  padding: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.add-line-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ===== Universal element style + presets ===== */
+
+.elements-section,
+.extra-lines-section,
+.presets-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* Space the theme line cards + embedded lines-editor inside the Text lines
+   section so the customization containers don't touch each other. */
+.elements-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.elements-section .elements-title {
+  margin-bottom: 0;
+}
+
+.elements-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.element-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  padding: 8px;
+  background: var(--bg-input);
+  margin-bottom: 8px;
+}
+
+.element-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.element-head .element-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.element-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--bg-input);
+  margin-bottom: 6px;
+}
+
+.element-row .element-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.element-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.presets-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.presets-head .reset {
+  font-size: 11px;
+  padding: 2px 8px;
+}
+
+.preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.preset-item {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.preset-load {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  text-align: left;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  padding: 6px 10px;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.preset-load:hover {
+  border-color: var(--accent);
+}
+
+.preset-load .preset-name {
+  font-size: 13px;
+}
+
+.preset-load .preset-base {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
 /* ===== Layout (drag) section ===== */
 
 .layout-section {

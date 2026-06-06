@@ -1,4 +1,5 @@
 import { useStore } from '../store';
+import { CUSTOM_THEME_NAME, savedThemeKey } from '../store';
 import themes from '../themes';
 
 type Props = {
@@ -12,7 +13,17 @@ type Props = {
 export default function Toolbar({ photoCount, canExport, onOpen, onExport, onSettings }: Props) {
   const selectedThemeName = useStore((s) => s.selectedThemeName);
   const darkMode = useStore((s) => s.darkMode);
+  const savedThemes = useStore((s) => s.savedThemes);
   const set = useStore((s) => s.set);
+  const saveCurrentTheme = useStore((s) => s.saveCurrentTheme);
+
+  // The Save button only appears on the base CUSTOM theme.
+  const isCustom = selectedThemeName === CUSTOM_THEME_NAME;
+
+  const onSave = () => {
+    const name = window.prompt('Save this custom theme as:', 'My custom theme');
+    if (name && name.trim()) saveCurrentTheme(name.trim());
+  };
 
   return (
     <div className="toolbar">
@@ -26,16 +37,28 @@ export default function Toolbar({ photoCount, canExport, onOpen, onExport, onSet
       <div className="divider" />
 
       <label style={{ margin: 0, color: 'var(--text-secondary)' }}>Theme:</label>
-      <select
-        value={selectedThemeName}
-        onChange={(e) => set({ selectedThemeName: e.target.value })}
-      >
+      <select value={selectedThemeName} onChange={(e) => set({ selectedThemeName: e.target.value })}>
         {themes.map((t) => (
           <option key={t.name} value={t.name}>
             {t.name}
           </option>
         ))}
+        {savedThemes.length > 0 && (
+          <optgroup label="Saved custom themes">
+            {savedThemes.map((p) => (
+              <option key={p.id} value={savedThemeKey(p.id)}>
+                {p.name}
+              </option>
+            ))}
+          </optgroup>
+        )}
       </select>
+
+      {isCustom && (
+        <button onClick={onSave} title="Save this custom theme so it appears in the dropdown">
+          ⭐ Save theme
+        </button>
+      )}
 
       <div className="spacer" />
 

@@ -19,14 +19,20 @@ a small native installer, native file dialogs and drag-drop, no Electron bloat.
   frame is added around it instead of downscaling to 4096px like the original.
 - **Maker logos** — brand logos (Sony, Canon, Nikon, Fujifilm, …) rendered on
   supported themes instead of plain text.
+- **Fully editable text lines** — on every theme, each text line exposes its
+  template pills plus font, weight, size, colour and alignment; you can add your
+  own lines, rename them, hide/show, and reset them individually.
+- **CUSTOM theme + saved themes** — build a frame from scratch (paddings, any
+  number of styled lines, an optional resizable maker logo) and **save it with a
+  name**; saved themes appear in the theme dropdown for reuse.
 - **Draggable layout** — drag any text line or logo directly on the preview to
   reposition it, with pink **snap guides** for alignment. Dividers can be dragged
   off to remove and restored from the Options panel.
 - **Undo / redo** — every per-theme edit (element moves, padding, templates,
-  colors, sliders, …) is undoable via the `↶` / `↷` buttons or `Ctrl+Z` / `Ctrl+Y`.
-- **Field ↔ element highlighting** — hovering a template/text input in the Options
-  panel highlights the matching element in the preview, so you can see what each
-  input controls.
+  colours, fonts, sliders, …) is undoable via the `↶` / `↷` buttons or
+  `Ctrl+Z` / `Ctrl+Y`.
+- **Field ↔ element highlighting** — hovering a line/field in the Options panel
+  highlights the matching element in the preview, so you can see what it controls.
 - **Pill-based template editor** — compose info lines from draggable field pills
   (Maker, Body, Lens, ISO, Focal length, Aperture, Shutter, Date) instead of
   typing `{TOKEN}` strings.
@@ -35,8 +41,8 @@ a small native installer, native file dialogs and drag-drop, no Electron bloat.
 - **Smart focal length** — shows the 35mm-equivalent focal length by default
   (from EXIF or computed from the sensor crop factor), with a setting to use the
   raw camera focal length instead.
-- **Per-theme persisted customization** — every option, layout drag and template
-  change is saved per theme; per-field and per-theme reset buttons included.
+- **Per-theme persisted customization** — every option, layout drag, style and
+  template change is saved per theme; per-field and per-theme reset buttons.
 - Drag-drop photos in from Explorer, per-photo metadata overrides, global
   maker/model/lens override, batch export, JPEG/PNG/WebP output at adjustable
   quality, resize on export, burn-in watermark, dark / light mode.
@@ -45,7 +51,6 @@ a small native installer, native file dialogs and drag-drop, no Electron bloat.
 
 ## Screenshots
 
-## Screenshots
 
 ![EXIF Frame for Windows — main window with the STRAP theme, maker logo and pill-based template editor](docs/screenshots/main.png)
 

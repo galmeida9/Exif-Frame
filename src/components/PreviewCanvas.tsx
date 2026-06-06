@@ -8,6 +8,7 @@ import { onAnyMakerLogoLoad } from '../themes/_shared/makerLogos';
 import { ElementRegistry, type CapturedElement } from '../core/drawing/elements';
 import { getLayout } from '../core/drawing/sandbox';
 import { subscribeHoveredElement, getHoveredElement } from './elementHover';
+import { publishElements } from './elementsChannel';
 
 type Props = {
   photo: Photo | null;
@@ -45,6 +46,11 @@ export default function PreviewCanvas({ photo, onFilesDropped, onOpen }: Props) 
 
   const store = useStore();
   const themeDesc = findTheme(store.selectedThemeName);
+  // The data key used to read/write this theme's per-theme state. For saved
+  // custom presets this is the synthetic "saved:<id>" name, NOT themeDesc.name
+  // (which is always "17. CUSTOM" for presets). Using themeDesc.name here would
+  // make all saved presets and the base CUSTOM theme share one storage slot.
+  const themeKey = store.selectedThemeName;
   const [logoTick, setLogoTick] = useState(0);
 
   // Preview zoom. `zoom === 1` means "fit to window" (the default). Values > 1
@@ -267,7 +273,7 @@ export default function PreviewCanvas({ photo, onFilesDropped, onOpen }: Props) 
     const seq = ++renderSeq.current;
     try {
       const input = buildOptionsInput(
-        themeDesc.name,
+        themeKey,
         themeDesc.options as { id: string; default: AcceptInputType }[],
         store.getThemeOption
       );
@@ -275,14 +281,18 @@ export default function PreviewCanvas({ photo, onFilesDropped, onOpen }: Props) 
       // Build a registry whose offset getter merges the persisted per-element
       // offsets with any live drag delta, so dragging updates the preview in
       // real time before being committed to the store on pointer-up.
-      const registry = new ElementRegistry(themeDesc.name, (themeName, elementId) => {
-        const base = store.getElementOffset(themeName, elementId);
-        const drag = dragRef.current;
-        if (drag && drag.id === elementId) {
-          return { dx: drag.dx, dy: drag.dy, hidden: base.hidden };
-        }
-        return base;
-      });
+      const registry = new ElementRegistry(
+        themeKey,
+        (themeName, elementId) => {
+          const base = store.getElementOffset(themeName, elementId);
+          const drag = dragRef.current;
+          if (drag && drag.id === elementId) {
+            return { dx: drag.dx, dy: drag.dy, hidden: base.hidden };
+          }
+          return base;
+        },
+        (themeName, elementId) => store.getElementStyle(themeName, elementId)
+      );
 
       const result = await render(themeDesc.func, photo, input, store, registry);
       // A newer render started while we awaited fonts — discard this one.
@@ -291,6 +301,7 @@ export default function PreviewCanvas({ photo, onFilesDropped, onOpen }: Props) 
       const layout = getLayout(result);
       normSizeRef.current = { w: layout.width, h: layout.height };
       elementsRef.current = registry.elements;
+      publishElements(registry.elements);
 
       // Capture the actual padding values the renderer used, so the UI can
       // surface any divergence between the OptionsPanel inputs and what is
@@ -330,9 +341,11 @@ export default function PreviewCanvas({ photo, onFilesDropped, onOpen }: Props) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     photo,
-    themeDesc.name,
-    JSON.stringify(store.themeOptions[themeDesc.name] ?? {}),
-    JSON.stringify(store.themeElementOffsets[themeDesc.name] ?? {}),
+    themeKey,
+    JSON.stringify(store.themeOptions[themeKey] ?? {}),
+    JSON.stringify(store.themeElementOffsets[themeKey] ?? {}),
+    JSON.stringify(store.themeElementStyles[themeKey] ?? {}),
+    JSON.stringify(store.themeExtraLines[themeKey] ?? []),
     store.ratio,
     store.notCroppedMode,
     store.fixImageWidth,
@@ -529,7 +542,7 @@ export default function PreviewCanvas({ photo, onFilesDropped, onOpen }: Props) 
       const hit = hitTest(pt.nx, pt.ny);
       if (!hit) return;
       e.preventDefault();
-      const base = store.getElementOffset(themeDesc.name, hit.id);
+      const base = store.getElementOffset(themeKey, hit.id);
       dragRef.current = {
         id: hit.id,
         kind: hit.kind,
@@ -554,7 +567,7 @@ export default function PreviewCanvas({ photo, onFilesDropped, onOpen }: Props) 
       hoverIdRef.current = hit.id;
       setHoverId(hit.id);
     },
-    [clientToNorm, hitTest, store, themeDesc.name]
+    [clientToNorm, hitTest, store, themeKey]
   );
 
   const onCanvasPointerMove = useCallback(
@@ -611,10 +624,10 @@ export default function PreviewCanvas({ photo, onFilesDropped, onOpen }: Props) 
         const outside =
           pt && (pt.nx < 0 || pt.ny < 0 || pt.nx > normW || pt.ny > normH);
         if (drag.kind === 'divider' && outside) {
-          store.resetElementOffset(themeDesc.name, drag.id);
-          store.toggleElementHidden(themeDesc.name, drag.id, true);
+          store.resetElementOffset(themeKey, drag.id);
+          store.toggleElementHidden(themeKey, drag.id, true);
         } else {
-          store.setElementOffset(themeDesc.name, drag.id, { dx: drag.dx, dy: drag.dy });
+          store.setElementOffset(themeKey, drag.id, { dx: drag.dx, dy: drag.dy });
         }
       }
 
@@ -623,7 +636,7 @@ export default function PreviewCanvas({ photo, onFilesDropped, onOpen }: Props) 
       // repaint to clear guides immediately.
       repaintVisible();
     },
-    [clientToNorm, store, themeDesc.name, repaintVisible]
+    [clientToNorm, store, themeKey, repaintVisible]
   );
 
   const handleDragEnter = (e: React.DragEvent) => {

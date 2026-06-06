@@ -20,6 +20,24 @@ export type ThemeOptionInput = Map<string, AcceptInputType>;
 
 export type AcceptInputType = string | number | boolean;
 
+/**
+ * One user-defined text line in the CUSTOM theme. Serialized as JSON into the
+ * `lines` option value so it persists through the normal per-theme option store.
+ */
+export type CustomLine = {
+  /** Stable id — also used as the draggable element id. */
+  id: string;
+  /** Optional user-given name shown in the editor (falls back to "Line N"). */
+  label?: string;
+  /** `{MAKER}{ISO}…` wire-format template (see applyTemplate). */
+  template: string;
+  fontFamily: string;
+  fontWeight: number;
+  fontSize: number;
+  color: string;
+  align: 'left' | 'center' | 'right';
+};
+
 /** UI metadata describing one configurable knob of a theme. */
 export type ThemeOption =
   | { id: string; type: 'string'; default: string; description?: string; elementId?: string }
@@ -27,6 +45,7 @@ export type ThemeOption =
   | { id: string; type: 'boolean'; default: boolean; description?: string }
   | { id: string; type: 'color'; default: string; description?: string }
   | { id: string; type: 'select'; options: string[]; default: string; description?: string }
+  | { id: string; type: 'lines'; default: string; description?: string }
   | {
       id: string;
       type: 'range-slider';

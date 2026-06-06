@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { findTheme } from '../themes';
+import { isSavedThemeName, SAVED_PREFIX } from '../store';
 import type { ThemeOption } from '../core/drawing/theme';
+import type { ExtraLine } from '../store';
 import TemplatePillEditor from './TemplatePillEditor';
+import LinesEditor from './LinesEditor';
+import ElementStylePanel from './ElementStylePanel';
 import { setHoveredElement } from './elementHover';
 
 /** Template fields use a curly-brace token string and get the pill editor UI. */
@@ -20,6 +24,7 @@ export default function OptionsPanel() {
     selectedThemeName,
     themeOptions,
     themeElementOffsets,
+    themeExtraLines,
     setThemeOption,
     getThemeOption,
     resetThemeLayout,
@@ -27,6 +32,9 @@ export default function OptionsPanel() {
     resetThemeField,
     resetThemeAll,
     resetAllThemes,
+    setExtraLines,
+    deleteSavedTheme,
+    resetSavedTheme,
     undo,
     redo,
     history,
@@ -40,6 +48,32 @@ export default function OptionsPanel() {
   const [confirmResetAll, setConfirmResetAll] = useState(false);
   const canUndo = history.length > 0;
   const canRedo = future.length > 0;
+  // The saved-theme id currently being edited (null for built-in themes).
+  const activeSavedId = isSavedThemeName(selectedThemeName)
+    ? selectedThemeName.slice(SAVED_PREFIX.length)
+    : null;
+
+  // Themes with a `lines` option (CUSTOM) drive their text entirely through the
+  // Text-lines editor, so we skip the per-element panel + the separate extra
+  // lines section to avoid duplication.
+  const hasLinesOption = themeDesc.options.some((o) => o.type === 'lines');
+  // Template-backed string options are edited inside the Text-lines element
+  // cards, so hide them from the generic option list.
+  const isTemplateOption = (opt: ThemeOption) =>
+    opt.type === 'string' && 'elementId' in opt && !!opt.elementId;
+
+  // Extra user-added lines for the current theme, edited via LinesEditor.
+  const extraLines = themeExtraLines[selectedThemeName] ?? [];
+  const extraLinesJson = JSON.stringify(extraLines);
+  const onExtraLinesChange = (json: string) => {
+    let parsed: ExtraLine[] = [];
+    try {
+      parsed = JSON.parse(json);
+    } catch {
+      parsed = [];
+    }
+    setExtraLines(selectedThemeName, parsed);
+  };
 
   // Layout (per-element drag) state for the current theme.
   const layoutMap = themeElementOffsets[selectedThemeName] ?? {};
@@ -50,7 +84,13 @@ export default function OptionsPanel() {
   const hiddenIds = layoutIds.filter((id) => layoutMap[id].hidden);
 
   const reset = () => {
-    resetThemeAll(selectedThemeName);
+    if (activeSavedId) {
+      // Saved custom themes have no static defaults — restore to how they were
+      // saved instead of wiping to the base CUSTOM defaults.
+      resetSavedTheme(activeSavedId);
+    } else {
+      resetThemeAll(selectedThemeName);
+    }
   };
 
   const resetAll = () => {
@@ -88,7 +128,11 @@ export default function OptionsPanel() {
           <button
             className="reset"
             onClick={reset}
-            title="Reset all options AND element positions for this theme back to defaults"
+            title={
+              activeSavedId
+                ? 'Reset this saved theme to how it was saved'
+                : 'Reset all options AND element positions for this theme back to defaults'
+            }
           >
             Reset theme
           </button>
@@ -112,37 +156,59 @@ export default function OptionsPanel() {
             This theme has no options.
           </div>
         ) : (
-          themeDesc.options.map((opt) => {
-            const value = getThemeOption(
-              selectedThemeName,
-              opt.id,
-              opt.default as string | number | boolean
-            );
-            const isCustomized = themeOptions[selectedThemeName]?.[opt.id] !== undefined;
-            return (
-              <OptionField
-                key={`${selectedThemeName}::${opt.id}`}
-                opt={opt}
-                value={value}
-                isCustomized={isCustomized}
-                onChange={(v) => setThemeOption(selectedThemeName, opt.id, v)}
-                onResetField={() => resetField(opt.id)}
-              />
-            );
-          })
+          themeDesc.options
+            .filter((opt) => !isTemplateOption(opt))
+            .map((opt) => {
+              const value = getThemeOption(
+                selectedThemeName,
+                opt.id,
+                opt.default as string | number | boolean
+              );
+              const isCustomized = themeOptions[selectedThemeName]?.[opt.id] !== undefined;
+              return (
+                <OptionField
+                  key={`${selectedThemeName}::${opt.id}`}
+                  opt={opt}
+                  value={value}
+                  isCustomized={isCustomized}
+                  onChange={(v) => setThemeOption(selectedThemeName, opt.id, v)}
+                  onResetField={() => resetField(opt.id)}
+                />
+              );
+            })
+        )}
+
+        {!hasLinesOption && (
+          <ElementStylePanel extraLinesJson={extraLinesJson} onExtraLinesChange={onExtraLinesChange} />
+        )}
+
+        {activeSavedId && (
+          <div className="presets-section">
+            <button
+              className="reset"
+              onClick={() => {
+                if (window.confirm('Delete this saved theme?')) deleteSavedTheme(activeSavedId);
+              }}
+              title="Delete this saved custom theme"
+            >
+              🗑 Delete saved theme
+            </button>
+          </div>
         )}
 
         {(hasLayoutChanges || hiddenIds.length > 0) && (
           <div className="layout-section">
             <div className="layout-header">
               <span>Layout</span>
-              <button
-                className="reset"
-                onClick={() => resetThemeLayout(selectedThemeName)}
-                title="Move every element back to its default position and unhide all"
-              >
-                Reset layout
-              </button>
+              {!activeSavedId && (
+                <button
+                  className="reset"
+                  onClick={() => resetThemeLayout(selectedThemeName)}
+                  title="Move every element back to its default position and unhide all"
+                >
+                  Reset layout
+                </button>
+              )}
             </div>
             <div className="layout-hint">Drag elements directly on the preview to reposition them.</div>
             {hiddenIds.length > 0 && (
@@ -214,6 +280,11 @@ function prettyId(id: string): string {
     .replace(/^\w/, (c) => c.toUpperCase());
 }
 
+/** Human-readable label for an option id: underscores → spaces (keeps acronyms). */
+function optionLabel(id: string): string {
+  return id.replace(/[_-]+/g, ' ');
+}
+
 function OptionField({
   opt,
   value,
@@ -236,18 +307,22 @@ function OptionField({
     >
       {opt.type !== 'boolean' && (
         <label className="option-label">
-          <span>{opt.id}</span>
+          <span>{opt.type === 'lines' ? 'TEXT LINES' : optionLabel(opt.id)}</span>
           {isCustomized && (
             <button
               type="button"
               className="field-reset"
               onClick={onResetField}
-              title={`Reset to default (${String(opt.default)})`}
+              title={opt.type === 'lines' ? 'Reset lines to default' : `Reset to default (${String(opt.default)})`}
             >
               ↺
             </button>
           )}
         </label>
+      )}
+
+      {opt.type === 'lines' && (
+        <LinesEditor value={value as string} onChange={(v) => onChange(v)} />
       )}
 
       {opt.type === 'string' && isTemplateField(opt) && (
@@ -293,7 +368,7 @@ function OptionField({
             checked={Boolean(value)}
             onChange={(e) => onChange(e.target.checked)}
           />
-          <span>{opt.id}</span>
+          <span>{optionLabel(opt.id)}</span>
           {isCustomized && (
             <button
               type="button"

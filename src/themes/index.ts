@@ -17,6 +17,7 @@ import { TIP_FUNC, TIP_OPTIONS } from './13_TIP';
 import { POSTER_FUNC, POSTER_OPTIONS } from './14_POSTER';
 import { CINEMASCOPE_FUNC, CINEMASCOPE_OPTIONS } from './15_CINEMASCOPE';
 import { SIMPLE_FUNC, SIMPLE_OPTIONS } from './16_SIMPLE';
+import { CUSTOM_FUNC, CUSTOM_OPTIONS } from './17_CUSTOM';
 
 preloadAllMakerLogos();
 
@@ -37,10 +38,16 @@ const themes: ThemeDescriptor[] = [
   { name: '14. POSTER', func: POSTER_FUNC, options: POSTER_OPTIONS },
   { name: '15. CINEMASCOPE', func: CINEMASCOPE_FUNC, options: CINEMASCOPE_OPTIONS },
   { name: '16. SIMPLE', func: SIMPLE_FUNC, options: SIMPLE_OPTIONS },
+  { name: '17. CUSTOM', func: CUSTOM_FUNC, options: CUSTOM_OPTIONS },
 ];
 
 export default themes;
 
 export function findTheme(name: string): ThemeDescriptor {
+  // Saved custom presets are synthetic theme names ("saved:<id>") that render
+  // through the CUSTOM theme. Their per-theme data lives under that key.
+  if (name.startsWith('saved:')) {
+    return themes.find((t) => t.name === '17. CUSTOM') ?? themes[3];
+  }
   return themes.find((t) => t.name === name) ?? themes[3]; // default to TWO LINE
 }
