@@ -5,12 +5,22 @@ import themes from '../themes';
 type Props = {
   photoCount: number;
   canExport: boolean;
+  libraryOpen: boolean;
+  onToggleLibrary: () => void;
   onOpen: () => void;
   onExport: () => void;
   onSettings: () => void;
 };
 
-export default function Toolbar({ photoCount, canExport, onOpen, onExport, onSettings }: Props) {
+export default function Toolbar({
+  photoCount,
+  canExport,
+  libraryOpen,
+  onToggleLibrary,
+  onOpen,
+  onExport,
+  onSettings,
+}: Props) {
   const selectedThemeName = useStore((s) => s.selectedThemeName);
   const darkMode = useStore((s) => s.darkMode);
   const savedThemes = useStore((s) => s.savedThemes);
@@ -27,6 +37,17 @@ export default function Toolbar({ photoCount, canExport, onOpen, onExport, onSet
 
   return (
     <div className="toolbar">
+      <button
+        className="icon-only"
+        onClick={onToggleLibrary}
+        title={libraryOpen ? 'Hide photo list' : 'Show photo list'}
+        aria-pressed={libraryOpen}
+      >
+        {libraryOpen ? '◧' : '▥'}
+      </button>
+
+      <div className="divider" />
+
       <button onClick={onOpen} title="Open photos (Ctrl+O)">
         📂 Open
       </button>

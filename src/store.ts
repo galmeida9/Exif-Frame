@@ -143,6 +143,8 @@ export type State = {
   // Desktop UX
   thumbnailSize: ThumbnailSize;
   zoomToFit: boolean;
+  /** Whether the left photo-library pane is open (persisted). */
+  libraryOpen: boolean;
 
   // Undo/redo history for per-theme edits (NOT persisted to disk).
   history: HistorySnapshot[];
@@ -233,6 +235,7 @@ const DEFAULTS: State = {
 
   thumbnailSize: 'medium',
   zoomToFit: true,
+  libraryOpen: true,
 
   history: [],
   future: [],

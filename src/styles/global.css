@@ -198,6 +198,44 @@ label {
   grid-template-columns: var(--left-w) 1fr var(--right-w);
   min-height: 0;
   overflow: hidden;
+  position: relative;
+}
+
+/* Library open + room available → it occupies its grid column (default). */
+.app-body.lib-push {
+  grid-template-columns: var(--left-w) 1fr var(--right-w);
+}
+
+/* Library closed, or open-as-overlay on a narrow window → the library is out of
+   grid flow (display:none / absolute), so the grid only lays out the preview +
+   options. Using two columns here ensures the preview gets the 1fr (not a
+   leftover 0-width column) and never disappears. */
+.app-body.lib-closed,
+.app-body.lib-overlay {
+  grid-template-columns: 1fr var(--right-w);
+}
+
+/* When closed, the library is removed from layout entirely. */
+.app-body.lib-closed .photo-library {
+  display: none;
+}
+
+/* Overlay mode: float the library over the content on the left edge. */
+.app-body.lib-overlay .photo-library {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--left-w);
+  z-index: 60;
+  box-shadow: var(--shadow-2, 0 8px 32px rgba(0, 0, 0, 0.45));
+}
+
+.library-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 55;
 }
 
 /* ===== Toolbar ===== */

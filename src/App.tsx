@@ -18,6 +18,8 @@ const IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'tiff', 'tif', 'heic', 'heif',
 export default function App() {
   const darkMode = useStore((s) => s.darkMode);
   const hydrated = useStore((s) => s.hydrated);
+  const libraryOpen = useStore((s) => s.libraryOpen);
+  const setStore = useStore((s) => s.set);
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -30,6 +32,26 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [overrideTarget, setOverrideTarget] = useState<number | null>(null);
+
+  // Below this window width the photo library opens as an overlay on top of the
+  // content instead of taking a grid column, so the image editor never shrinks
+  // to an unusable size on narrow windows.
+  const LIBRARY_OVERLAY_BELOW = 1000;
+  const [narrow, setNarrow] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < LIBRARY_OVERLAY_BELOW : false
+  );
+  useEffect(() => {
+    const onResize = () => setNarrow(window.innerWidth < LIBRARY_OVERLAY_BELOW);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const toggleLibrary = useCallback(() => setStore({ libraryOpen: !libraryOpen }), [libraryOpen, setStore]);
+
+  // Library presentation: pushes a grid column only when open AND there's room;
+  // otherwise (open + narrow) it floats as an overlay.
+  const libraryOverlay = libraryOpen && narrow;
+  const libraryPush = libraryOpen && !narrow;
 
   useEffect(() => {
     document.documentElement.classList.toggle('light', !darkMode);
@@ -238,23 +260,34 @@ export default function App() {
       <Toolbar
         photoCount={photos.length}
         canExport={photos.length > 0}
+        libraryOpen={libraryOpen}
+        onToggleLibrary={toggleLibrary}
         onOpen={handleOpen}
         onExport={() => setExportOpen(true)}
         onSettings={() => setSettingsOpen(true)}
       />
 
-      <div className="app-body">
+      <div
+        className={`app-body${libraryPush ? ' lib-push' : ''}${libraryOverlay ? ' lib-overlay' : ''}${
+          libraryOpen ? '' : ' lib-closed'
+        }`}
+      >
         <PhotoLibrary
           photos={photos}
           selectedIndex={selectedIndex}
           loading={loading}
-          onSelect={setSelectedIndex}
+          onSelect={(i) => {
+            setSelectedIndex(i);
+            if (libraryOverlay) setStore({ libraryOpen: false });
+          }}
           onRemove={handleRemove}
           onClear={handleClear}
           onAdd={handleOpen}
           onFilesDropped={loadFromFiles}
           onOverride={(i) => setOverrideTarget(i)}
         />
+
+        {libraryOverlay && <div className="library-backdrop" onClick={toggleLibrary} />}
 
         <PreviewCanvas photo={selectedPhoto} onFilesDropped={loadFromFiles} onOpen={handleOpen} />
 
