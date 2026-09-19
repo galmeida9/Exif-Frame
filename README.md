@@ -108,6 +108,7 @@ Update the version in `package.json`, `package-lock.json`, `src-tauri\Cargo.toml
 `v<version>` tag. The **Build Windows release** GitHub Actions workflow runs the
 tests and builds both installers on Windows, attaching them to a **draft**
 release. Review the assets and release notes before publishing the draft.
+The workflow can also be run manually with an existing version tag.
 
 ## Keyboard shortcuts
 
