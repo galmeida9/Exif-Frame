@@ -27,7 +27,9 @@ a small native installer, native file dialogs and drag-drop, no Electron bloat.
   name**; saved themes appear in the theme dropdown for reuse.
 - **Draggable layout** — drag any text line or logo directly on the preview to
   reposition it, with pink **snap guides** for alignment. Dividers can be dragged
-  off to remove and restored from the Options panel.
+  off to remove and restored from the Options panel. Single-photo and batch
+  exports preserve these positions, visibility, text styles and added lines,
+  including when using saved themes.
 - **Undo / redo** — every per-theme edit (element moves, padding, templates,
   colours, fonts, sliders, …) is undoable via the `↶` / `↷` buttons or
   `Ctrl+Z` / `Ctrl+Y`.

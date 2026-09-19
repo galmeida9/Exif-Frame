@@ -1,7 +1,7 @@
 import type Photo from './Photo';
 import type { Store } from '../../store';
 import type { ThemeFunc, ThemeOptionInput } from './theme';
-import type { ElementRegistry } from './elements';
+import { ElementRegistry } from './elements';
 import resize from './resize';
 import { getLayout } from './sandbox';
 import { applyTemplate } from '../../themes/_shared/applyTemplate';
@@ -9,13 +9,18 @@ import { applyTemplate } from '../../themes/_shared/applyTemplate';
 /**
  * Pipeline runner: invoke the theme function, then apply post-effects
  * (extra user lines, fixed watermark, fixed image width) defined in the store.
+ * Apply persisted layout and style edits even when no preview registry is supplied.
  */
 export default async function render(
   func: ThemeFunc,
   photo: Photo,
   options: ThemeOptionInput,
   store: Store,
-  registry?: ElementRegistry
+  registry: ElementRegistry = new ElementRegistry(
+    store.selectedThemeName,
+    store.getElementOffset,
+    store.getElementStyle
+  )
 ): Promise<HTMLCanvasElement> {
   // Belt-and-braces guarantee that any @font-face declarations (Barlow + the
   // optional display fonts) are decoded before the theme draws text. The

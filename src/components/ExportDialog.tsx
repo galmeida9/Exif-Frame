@@ -56,7 +56,7 @@ export default function ExportDialog({ photos, selectedIndex, onClose, onStatus 
 
   const renderPhoto = async (photo: Photo): Promise<Uint8Array> => {
     const input = buildOptionsInput(
-      themeDesc.name,
+      store.selectedThemeName,
       themeDesc.options as { id: string; default: AcceptInputType }[],
       store.getThemeOption
     );
