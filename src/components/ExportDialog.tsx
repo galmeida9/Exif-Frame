@@ -51,7 +51,7 @@ export default function ExportDialog({ photos, selectedIndex, onClose, onStatus 
   const [exporting, setExporting] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
 
-  const themeDesc = findTheme(store.selectedThemeName);
+  const themeDesc = findTheme(store.selectedThemeName, store.savedThemes);
   const ext = extFor(store.format);
 
   const renderPhoto = async (photo: Photo): Promise<Uint8Array> => {

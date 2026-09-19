@@ -89,7 +89,7 @@ function photo(width = 6000, height = 4000): Photo {
 
 async function preview(source: Photo, registry?: ElementRegistry) {
   const store = useStore.getState();
-  const theme = findTheme(store.selectedThemeName);
+  const theme = findTheme(store.selectedThemeName, store.savedThemes);
   const options: ThemeOptionInput = new Map(theme.options.map((o) => [
     o.id, store.getThemeOption(store.selectedThemeName, o.id, o.default),
   ]));
@@ -224,6 +224,39 @@ describe('export layout matches the preview', () => {
     await exportPhotos([source], 0);
     expect(canvases.at(-1)).toMatchObject({ width: expected.width, height: expected.height, draws: expected.draws });
   });
+
+  it.each(['07. STRAP', '04. TWO LINE', '17. CUSTOM'])(
+    'preserves the %s design in a saved copy, its preview and batch exports',
+    async (themeName) => {
+      useStore.setState({
+        selectedThemeName: themeName,
+        themeOptions: { [themeName]: { PADDING_BOTTOM: 800 } },
+        themeElementOffsets: {
+          [themeName]: { logo: { dx: 200, dy: 50 }, divider: { dx: 0, dy: 0, hidden: true } },
+        },
+        themeElementStyles: { [themeName]: { exif: { color: '#ff0000', fontSize: 90 } } },
+        themeExtraLines: {
+          [themeName]: [{
+            id: 'credit', template: 'Photo credit', fontFamily: 'Arial',
+            fontWeight: 400, fontSize: 60, color: '#123456', align: 'center',
+          }],
+        },
+      });
+      const sources = [photo(), photo(4000, 6000)];
+      const expected = [];
+      for (const source of sources) expected.push(await preview(source));
+      useStore.getState().saveCurrentTheme('My saved design');
+      for (const [index, source] of sources.entries()) {
+        expect(await preview(source)).toMatchObject({
+          width: expected[index].width, height: expected[index].height, draws: expected[index].draws,
+        });
+      }
+      const start = canvases.length;
+      await exportPhotos(sources, null);
+      expect(canvases.slice(start).map((c) => ({ width: c.width, height: c.height, draws: c.draws })))
+        .toEqual(expected.map((c) => ({ width: c.width, height: c.height, draws: c.draws })));
+    }
+  );
 
   it('keeps customizations before resize and watermark post-effects', async () => {
     useStore.setState({

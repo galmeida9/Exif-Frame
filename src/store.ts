@@ -48,6 +48,8 @@ export type ExtraLine = {
 export type SavedTheme = {
   id: string;
   name: string;
+  /** Built-in renderer to reuse. Older presets used CUSTOM exclusively. */
+  baseThemeName?: string;
   baseline: {
     options: Record<string, ThemeOptionValue>;
     offsets: Record<string, ElementOffset>;
@@ -554,7 +556,12 @@ export const useStore = create<Store>((set, get) => {
   },
 
   saveCurrentTheme: (name) => {
+    const trimmedName = name.trim();
+    if (!trimmedName) throw new Error('Enter a name for the theme.');
     const source = get().selectedThemeName;
+    const baseThemeName = isSavedThemeName(source)
+      ? get().savedThemes.find((p) => savedThemeKey(p.id) === source)?.baseThemeName ?? CUSTOM_THEME_NAME
+      : source;
     const id = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const key = savedThemeKey(id);
 
@@ -579,12 +586,22 @@ export const useStore = create<Store>((set, get) => {
       delete nextExtra[CUSTOM_THEME_NAME];
     }
 
+    // Saving creates an independent preset, not an undoable edit. Keep its data
+    // in older snapshots so undoing source edits cannot erase the new preset.
+    const withSavedTheme = (snapshot: HistorySnapshot): HistorySnapshot => ({
+      themeOptions: { ...snapshot.themeOptions, [key]: structuredClone(savedOptions) },
+      themeElementOffsets: { ...snapshot.themeElementOffsets, [key]: structuredClone(savedOffsets) },
+      themeElementStyles: { ...snapshot.themeElementStyles, [key]: structuredClone(savedStyles) },
+      themeExtraLines: { ...snapshot.themeExtraLines, [key]: structuredClone(savedExtra) },
+    });
+
     set({
       savedThemes: [
         ...get().savedThemes,
         {
           id,
-          name: name.trim() || 'Custom theme',
+          name: trimmedName,
+          baseThemeName,
           baseline: { options: savedOptions, offsets: savedOffsets, styles: savedStyles, extraLines: savedExtra },
         },
       ],
@@ -593,6 +610,8 @@ export const useStore = create<Store>((set, get) => {
       themeElementStyles: nextStyles,
       themeExtraLines: nextExtra,
       selectedThemeName: key,
+      history: get().history.map(withSavedTheme),
+      future: get().future.map(withSavedTheme),
     });
     schedulePersist();
   },

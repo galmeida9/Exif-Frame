@@ -1218,6 +1218,26 @@ label {
   justify-content: flex-end;
 }
 
+.save-theme-dialog {
+  margin: auto;
+  padding: 0;
+  color: var(--text);
+  width: 400px;
+  max-width: calc(100vw - 64px);
+}
+
+.save-theme-dialog:not([open]) {
+  display: none;
+}
+
+.save-theme-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.save-theme-dialog input {
+  width: 100%;
+}
+
 .settings-section {
   margin-bottom: 20px;
 }

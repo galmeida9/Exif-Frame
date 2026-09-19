@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useStore } from '../store';
-import { CUSTOM_THEME_NAME, savedThemeKey } from '../store';
+import { savedThemeKey } from '../store';
 import themes from '../themes';
+import SaveThemeDialog from './SaveThemeDialog';
 
 type Props = {
   photoCount: number;
@@ -25,15 +27,7 @@ export default function Toolbar({
   const darkMode = useStore((s) => s.darkMode);
   const savedThemes = useStore((s) => s.savedThemes);
   const set = useStore((s) => s.set);
-  const saveCurrentTheme = useStore((s) => s.saveCurrentTheme);
-
-  // The Save button only appears on the base CUSTOM theme.
-  const isCustom = selectedThemeName === CUSTOM_THEME_NAME;
-
-  const onSave = () => {
-    const name = window.prompt('Save this custom theme as:', 'My custom theme');
-    if (name && name.trim()) saveCurrentTheme(name.trim());
-  };
+  const [saveThemeOpen, setSaveThemeOpen] = useState(false);
 
   return (
     <div className="toolbar">
@@ -75,11 +69,13 @@ export default function Toolbar({
         )}
       </select>
 
-      {isCustom && (
-        <button onClick={onSave} title="Save this custom theme so it appears in the dropdown">
-          ⭐ Save theme
-        </button>
-      )}
+      <button
+        onClick={() => setSaveThemeOpen(true)}
+        title="Save a named copy of this theme with its current customizations"
+      >
+        ⭐ Save new theme
+      </button>
+      {saveThemeOpen && <SaveThemeDialog onClose={() => setSaveThemeOpen(false)} />}
 
       <div className="spacer" />
 

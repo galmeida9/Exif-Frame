@@ -41,7 +41,7 @@ export default function OptionsPanel() {
     future,
   } = store;
 
-  const themeDesc = findTheme(selectedThemeName);
+  const themeDesc = findTheme(selectedThemeName, store.savedThemes);
   const customizedThemeCount = Object.keys(themeOptions).filter(
     (name) => Object.keys(themeOptions[name] ?? {}).length > 0
   ).length;

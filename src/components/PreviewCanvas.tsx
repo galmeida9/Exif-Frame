@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type Photo from '../core/drawing/Photo';
-import { useStore } from '../store';
+import { savedThemeKey, useStore } from '../store';
 import { findTheme } from '../themes';
 import render from '../core/drawing/render';
 import type { ThemeOptionInput, AcceptInputType } from '../core/drawing/theme';
@@ -45,11 +45,11 @@ export default function PreviewCanvas({ photo, onFilesDropped, onOpen }: Props) 
   } | null>(null);
 
   const store = useStore();
-  const themeDesc = findTheme(store.selectedThemeName);
+  const themeDesc = findTheme(store.selectedThemeName, store.savedThemes);
   // The data key used to read/write this theme's per-theme state. For saved
   // custom presets this is the synthetic "saved:<id>" name, NOT themeDesc.name
-  // (which is always "17. CUSTOM" for presets). Using themeDesc.name here would
-  // make all saved presets and the base CUSTOM theme share one storage slot.
+  // (which identifies the base renderer). Using themeDesc.name here would
+  // make saved presets and their base theme share one storage slot.
   const themeKey = store.selectedThemeName;
   const [logoTick, setLogoTick] = useState(0);
 
@@ -666,7 +666,9 @@ export default function PreviewCanvas({ photo, onFilesDropped, onOpen }: Props) 
   return (
     <div className="preview">
       <div className="preview-header">
-        <span style={{ fontWeight: 600 }}>{themeDesc.name}</span>
+        <span style={{ fontWeight: 600 }}>
+          {store.savedThemes.find((p) => savedThemeKey(p.id) === themeKey)?.name ?? themeDesc.name}
+        </span>
         {photo && (
           <div className="zoom" role="group" aria-label="Zoom controls">
             <button className="zoom-btn" title="Zoom out (Ctrl -)" onClick={zoomOut} aria-label="Zoom out">

@@ -22,9 +22,12 @@ a small native installer, native file dialogs and drag-drop, no Electron bloat.
 - **Fully editable text lines** — on every theme, each text line exposes its
   template pills plus font, weight, size, colour and alignment; you can add your
   own lines, rename them, hide/show, and reset them individually.
-- **CUSTOM theme + saved themes** — build a frame from scratch (paddings, any
-  number of styled lines, an optional resizable maker logo) and **save it with a
-  name**; saved themes appear in the theme dropdown for reuse.
+- **CUSTOM theme + saved themes** — build a frame from scratch or customize any
+  existing theme, then click **Save new theme** and enter a name. The independent
+  copy preserves the base design, options, element positions, styles and added
+  lines, and appears under **Saved custom themes** in the theme dropdown. You can
+  also save a new copy of an existing saved theme; **Reset theme** restores a
+  saved theme to its original saved state.
 - **Draggable layout** — drag any text line or logo directly on the preview to
   reposition it, with pink **snap guides** for alignment. Dividers can be dragged
   off to remove and restored from the Options panel. Single-photo and batch
@@ -91,12 +94,20 @@ npm run tauri:build
 ```
 
 Produces:
-- `src-tauri\target\release\bundle\msi\EXIF Frame_0.1.0_x64_en-US.msi`
-- `src-tauri\target\release\bundle\nsis\EXIF Frame_0.1.0_x64-setup.exe`
+- `src-tauri\target\release\bundle\msi\EXIF Frame_0.4.0_x64_en-US.msi`
+- `src-tauri\target\release\bundle\nsis\EXIF Frame_0.4.0_x64-setup.exe`
 
 Both are unsigned. To sign, configure a code-signing cert in
 `src-tauri\tauri.conf.json` under `bundle.windows.certificateThumbprint` and
 re-build.
+
+### Publishing a release
+
+Update the version in `package.json`, `package-lock.json`, `src-tauri\Cargo.toml`,
+`src-tauri\Cargo.lock` and `src-tauri\tauri.conf.json`, then push a matching
+`v<version>` tag. The **Build Windows release** GitHub Actions workflow runs the
+tests and builds both installers on Windows, attaching them to a **draft**
+release. Review the assets and release notes before publishing the draft.
 
 ## Keyboard shortcuts
 

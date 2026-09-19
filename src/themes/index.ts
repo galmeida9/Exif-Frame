@@ -1,4 +1,5 @@
 import type { ThemeDescriptor } from '../core/drawing/theme';
+import { CUSTOM_THEME_NAME, isSavedThemeName, savedThemeKey, type SavedTheme } from '../store';
 import { preloadAllMakerLogos } from './_shared/makerLogos';
 
 import { NO_FRAME_FUNC, NO_FRAME_OPTIONS } from './01_NO_FRAME';
@@ -43,11 +44,10 @@ const themes: ThemeDescriptor[] = [
 
 export default themes;
 
-export function findTheme(name: string): ThemeDescriptor {
-  // Saved custom presets are synthetic theme names ("saved:<id>") that render
-  // through the CUSTOM theme. Their per-theme data lives under that key.
-  if (name.startsWith('saved:')) {
-    return themes.find((t) => t.name === '17. CUSTOM') ?? themes[3];
+export function findTheme(name: string, savedThemes: readonly SavedTheme[] = []): ThemeDescriptor {
+  if (isSavedThemeName(name)) {
+    const preset = savedThemes.find((p) => savedThemeKey(p.id) === name);
+    name = preset?.baseThemeName ?? CUSTOM_THEME_NAME;
   }
   return themes.find((t) => t.name === name) ?? themes[3]; // default to TWO LINE
 }

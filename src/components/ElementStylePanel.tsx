@@ -42,7 +42,7 @@ export default function ElementStylePanel({
   void store.themeElementOffsets;
   void store.themeOptions;
 
-  const themeDesc = findTheme(selectedThemeName);
+  const themeDesc = findTheme(selectedThemeName, store.savedThemes);
 
   // Map element id -> backing template option id (string options that declared
   // an `elementId`), so each line can show its content as editable pills.
